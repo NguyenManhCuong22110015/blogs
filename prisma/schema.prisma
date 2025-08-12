@@ -1,0 +1,45 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  username   String?  @unique
+  full_name  String?
+  avatar     String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Post {
+  id            String     @id @default(uuid()) @db.Uuid
+  title         String     @db.VarChar(255)
+  slug          String     @unique @db.VarChar(255)
+  content       String     @db.Text
+  summary       String?    @db.Text
+  thumbnail_url String?    @db.VarChar(500)
+  status        PostStatus @default(DRAFT)
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  published_at  DateTime?  
+
+  @@index([slug])
+  @@index([status])
+  @@index([published_at])
+  @@map("posts")
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
