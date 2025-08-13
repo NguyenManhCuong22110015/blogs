@@ -7,13 +7,11 @@ import { ProductsModule } from '@/modules/products/products.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { PostModule } from '@/modules/post/post.module';
 import { PrismaModule } from '@/common/prisma/prisma.module';
-import configuration from '@/config/configuration';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ 
+    ConfigModule.forRoot({
       isGlobal: true,
-      load: [configuration],
       envFilePath: ['.env.local', '.env'],
     }),
     UsersModule,
