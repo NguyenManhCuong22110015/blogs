@@ -3,9 +3,11 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { TransformResponseInterceptor } from '@/common/interceptors/transform-response.interceptor';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -18,14 +20,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformResponseInterceptor());
 
   app.enableCors({
-    origin:
-      process.env.NODE_ENV === 'production'
-        ? process.env.FRONTEND_URL || false
-        : [
-            'http://localhost:5173',
-            'http://localhost:3000',
-            'http://127.0.0.1:5173',
-          ],
+    origin: configService.get('cors.origin'),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -41,6 +36,10 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.PORT ?? 5000);
+  const port = configService.get('port');
+  await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on: ${await app.getUrl()}`);
+  console.log(`Environment: ${configService.get('environment')}`);
+  console.log(`Port: ${port}`);
 }
 bootstrap();

@@ -17,6 +17,10 @@
     "PORT": {
       "description": "Port for the application to run on",
       "value": "5000"
+    },
+    "DATABASE_URL": {
+      "description": "PostgreSQL database URL",
+      "required": true
     }
   },
   "addons": [
@@ -29,5 +33,8 @@
       "quantity": 1,
       "size": "basic"
     }
+  },
+  "scripts": {
+    "postdeploy": "npx prisma migrate deploy"
   }
 } 
