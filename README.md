@@ -21,78 +21,190 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# Structure API
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+A modern NestJS API with Prisma ORM, PostgreSQL database, and comprehensive CRUD operations.
 
-## Project setup
+## Features
 
+- 🚀 **NestJS 11** - Modern Node.js framework
+- 🗄️ **Prisma ORM** - Type-safe database access
+- 🐘 **PostgreSQL** - Robust relational database
+- 📚 **Swagger/OpenAPI** - Interactive API documentation
+- 🔐 **JWT Authentication** - Secure user authentication
+- ✅ **Validation** - Request/response validation
+- 🎯 **TypeScript** - Full type safety
+
+## API Endpoints
+
+### Users
+- `POST /users` - Create user
+- `GET /users` - Get all users
+- `GET /users/:id` - Get user by ID
+- `PATCH /users/:id` - Update user
+- `DELETE /users/:id` - Delete user
+
+### Posts
+- `POST /post` - Create post
+- `GET /post` - Get all posts (paginated)
+- `GET /post/:id` - Get post by ID
+- `PATCH /post/:id` - Update post
+- `DELETE /post/:id` - Delete post
+
+### Swagger Documentation
+- Visit `/api` for interactive API documentation
+
+## Quick Start
+
+### Local Development
+
+1. **Install dependencies**
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
-
+2. **Set up environment variables**
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env
+# Edit .env with your database URL
 ```
 
-## Run tests
-
+3. **Run database migrations**
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npx prisma migrate dev
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+4. **Seed database (optional)**
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run prisma:seed
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+5. **Start development server**
+```bash
+npm run start:dev
+```
 
-## Resources
+### Production Build
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+npm run build
+npm run start:prod
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Heroku Deployment
 
-## Support
+### Option 1: Heroku CLI
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+1. **Install Heroku CLI**
+```bash
+npm install -g heroku
+```
 
-## Stay in touch
+2. **Login to Heroku**
+```bash
+heroku login
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+3. **Create Heroku app**
+```bash
+heroku create your-app-name
+```
+
+4. **Add PostgreSQL addon**
+```bash
+heroku addons:create heroku-postgresql:mini
+```
+
+5. **Set environment variables**
+```bash
+heroku config:set NODE_ENV=production
+heroku config:set DATABASE_URL=$(heroku config:get DATABASE_URL)
+```
+
+6. **Deploy**
+```bash
+git add .
+git commit -m "Deploy to Heroku"
+git push heroku main
+```
+
+7. **Run migrations**
+```bash
+heroku run npx prisma migrate deploy
+```
+
+### Option 2: Heroku Dashboard
+
+1. Connect your GitHub repository
+2. Enable automatic deploys
+3. Add PostgreSQL addon
+4. Set environment variables in dashboard
+5. Deploy manually or enable auto-deploy
+
+## Environment Variables
+
+```env
+# Database
+DATABASE_URL="postgresql://username:password@host:port/database"
+
+# App
+NODE_ENV="development"
+PORT="5000"
+
+# Frontend (for CORS)
+FRONTEND_URL="https://yourdomain.com"
+```
+
+## Database Schema
+
+### User Model
+- `id` - Unique identifier (CUID)
+- `email` - User email (unique)
+- `username` - Optional username (unique)
+- `full_name` - User's full name
+- `avatar` - Profile picture URL
+- `created_at` - Account creation timestamp
+- `updated_at` - Last update timestamp
+
+### Post Model
+- `id` - Unique identifier (UUID)
+- `title` - Post title
+- `slug` - URL-friendly identifier (unique)
+- `content` - Post content (markdown)
+- `summary` - Post summary
+- `thumbnail_url` - Featured image URL
+- `status` - Publication status (DRAFT/PUBLISHED/ARCHIVED)
+- `created_at` - Creation timestamp
+- `updated_at` - Last update timestamp
+- `published_at` - Publication timestamp
+
+## Development
+
+### Available Scripts
+
+- `npm run build` - Build the application
+- `npm run start` - Start the application
+- `npm run start:dev` - Start in development mode with hot reload
+- `npm run start:prod` - Start in production mode
+- `npm run lint` - Run ESLint
+- `npm run test` - Run tests
+- `npm run prisma:seed` - Seed the database
+
+### Code Style
+
+This project uses:
+- **ESLint** for code linting
+- **Prettier** for code formatting
+- **TypeScript** for type safety
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is licensed under the MIT License.

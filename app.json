@@ -1,0 +1,33 @@
+{
+  "name": "Structure API",
+  "description": "NestJS API with Prisma and PostgreSQL",
+  "repository": "https://github.com/yourusername/Structure",
+  "logo": "https://nestjs.com/img/logo-small.svg",
+  "keywords": ["nestjs", "prisma", "postgresql", "api"],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Environment for the application",
+      "value": "production"
+    },
+    "PORT": {
+      "description": "Port for the application to run on",
+      "value": "5000"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:mini"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  }
+} 
