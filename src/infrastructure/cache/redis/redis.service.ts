@@ -23,12 +23,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private getRedisUrl(): string | null {
-    const url = this.configService.get<string>('redis.url');
+    const url = this.configService.get<string>('REDIS_URL');
+    console.log('url', url);
     return url || null;
   }
 
   private buildUrlFromParts(): string {
-    const host = this.configService.get<string>('redis.host') || '127.0.0.1';
+    const host = this.configService.get<string>('redis.host') || '';
     const port = this.configService.get<number>('redis.port') || 6379;
     const username = this.configService.get<string>('redis.username');
     const password = this.configService.get<string>('redis.password');
@@ -41,18 +42,51 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return `${protocol}://${authPart}${host}:${port}/${db}`;
   }
 
+  private shouldUseTls(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'rediss:';
+    } catch {
+      return false;
+    }
+  }
+
   async connect(): Promise<void> {
-    if (this.client) return; // already connected/connecting
+    if (this.client) return;
 
-    const url = this.getRedisUrl() || this.buildUrlFromParts();
+    let url = this.getRedisUrl();
+    if (url) {
+      try {
+        const parsed = new URL(url);
+        if (!parsed.hostname) throw new Error('Missing host');
+      } catch {
+        this.logger.warn(
+          'Invalid REDIS_URL provided. Falling back to discrete redis.* config.',
+        );
+        url = null;
+      }
+    }
+    url = url || this.buildUrlFromParts();
 
-    this.client = createClient({
+    const useTls = this.shouldUseTls(url);
+    const parsed = new URL(url);
+
+    const socketConfig: any = {
+      reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
+    };
+
+    if (useTls) {
+      socketConfig.tls = true;
+      socketConfig.rejectUnauthorized = false; // tránh lỗi cert self-signed
+      socketConfig.servername = parsed.hostname; // bắt buộc cho Redis Cloud
+    }
+
+    const clientConfig: any = {
       url,
-      socket: {
-        reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
-      },
-      database: this.configService.get<number>('redis.db') ?? 0,
-    });
+      socket: socketConfig,
+    };
+
+    this.client = createClient(clientConfig);
 
     this.client.on('error', (err: unknown) => {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -67,9 +101,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.client.on('end', () => this.logger.warn('Redis connection closed'));
 
     await this.client.connect();
-
-    // Apply key prefix logically via wrapping helpers
-    // Alternatively, could create a separate client with a prefix, but redis v4 doesn't support prefix on client
   }
 
   async disconnect(): Promise<void> {
@@ -89,7 +120,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private withPrefix(key: string): string {
-    const prefix = this.configService.get<string>('redis.keyPrefix') || 'app:';
+    const prefix = this.configService.get<string>('REDIS_KEY_PREFIX') || 'app:';
     return `${prefix}${key}`;
   }
 
@@ -126,7 +157,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async keys(pattern: string): Promise<string[]> {
     const client = this.ensureClient();
-    const prefix = this.configService.get<string>('redis.keyPrefix') || 'app:';
+    const prefix =
+      this.configService.get<string>('REDIS_KEY_PREFIX') || 'app:';
     const iter = client.scanIterator({ MATCH: `${prefix}${pattern}` });
     const results: string[] = [];
     for await (const key of iter) {
