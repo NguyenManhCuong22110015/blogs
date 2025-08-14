@@ -1,12 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
-import { PrismaService } from '@/common/prisma/prisma.service';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { CreatePostDto } from '../dto/v1/create-post.dto';
+import { UpdatePostDto } from '../dto/v1/update-post.dto';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { Post } from '@prisma/client';
+import { ImageService } from '@/common/image/image.service';
+import slugify from 'slugify';
 
 @Injectable()
 export class PostService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService,
+              private readonly imageService : ImageService) {}
 
   private async generateUniqueSlug(baseSlug: string): Promise<string> {
     let slug = baseSlug;
@@ -26,6 +29,29 @@ export class PostService {
       data: { ...createPostDto, slug: uniqueSlug },
     });
   }
+  async createV2(createPostDto: CreatePostDto, file?: Express.Multer.File): Promise<Post> {
+    let imageUrl: string | undefined;
+
+    if (file) {
+      if (!file.mimetype.startsWith('image/')) {
+        throw new BadRequestException('File không phải hình ảnh');
+      }
+      const upload = await this.imageService.uploadImage(file);
+      imageUrl = upload?.url;
+    }
+
+    const rawSlug = createPostDto.slug || slugify(createPostDto.title, { lower: true });
+    const uniqueSlug = await this.generateUniqueSlug(rawSlug);
+
+    return this.prisma.post.create({
+      data: {
+        ...createPostDto,
+        ...(imageUrl && { thumbnail_url: imageUrl }),
+        slug: uniqueSlug
+      }
+    });
+  }
+
 
   async findAll(
     page = 1,

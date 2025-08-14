@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { TransformResponseInterceptor } from '@/common/interceptors/transform-response.interceptor';
+import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
+import { PrismaExceptionFilter } from '@/common/filters/prisma-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,8 +16,13 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.enableVersioning({
+    type: VersioningType.URI,
+    prefix: 'v',
+  });
 
   app.useGlobalInterceptors(new TransformResponseInterceptor());
+  app.useGlobalFilters(new HttpExceptionFilter(), new PrismaExceptionFilter());
 
   app.enableCors({
     origin:
@@ -47,4 +54,4 @@ async function bootstrap() {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Port: ${port}`);
 }
-bootstrap();
+void bootstrap();

@@ -8,24 +8,37 @@ import {
   Delete,
   Query,
   DefaultValuePipe,
-  ParseIntPipe,
+  ParseIntPipe, UseInterceptors,
 } from '@nestjs/common';
-import { PostService } from './post.service';
-import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
-import { ApiQuery } from '@nestjs/swagger';
+import { PostService } from '../services/post.service';
+import { CreatePostDto } from '../dto/v1/create-post.dto';
+import { UpdatePostDto } from '../dto/v1/update-post.dto';
+import { ApiConsumes, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { PaginatedResponseDto } from '@/common/dtos/responses/base.response';
+import { FileInterceptor } from '@nestjs/platform-express';
 
-@Controller('post')
-export class PostController {
+@Controller({
+  path: 'posts',
+  version: '1'
+})
+export class PostsV1Controller {
   constructor(private readonly postService: PostService) {}
 
   @Post()
+  @ApiOperation({
+    summary: 'create  post',
+  })
+
   create(@Body() createPostDto: CreatePostDto) {
     return this.postService.create(createPostDto);
   }
 
+
+
   @Get()
+  @ApiOperation({
+    summary: 'Get all posts',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async findAll(
@@ -37,16 +50,27 @@ export class PostController {
   }
 
   @Get(':id')
+  @ApiOperation({
+    summary: 'Get  post by id',
+  })
   findOne(@Param('id') id: string) {
     return this.postService.findOne(id);
   }
 
   @Patch(':id')
+  @ApiOperation({
+    summary: 'update  post',
+  })
   update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
     return this.postService.update(id, updatePostDto);
   }
 
+
+
   @Delete(':id')
+  @ApiOperation({
+    summary: 'delete  post',
+  })
   remove(@Param('id') id: string) {
     return this.postService.remove(id);
   }
