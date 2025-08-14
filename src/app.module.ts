@@ -8,7 +8,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
 import { PostModule } from '@/modules/post/post.module';
 import { PrismaModule } from '@/infrastructure/database/prisma.module';
 import { ImageModule } from '@/common/image/image.module';
-
+import { RedisModule } from '@/infrastructure/cache/redis/redis.module';
 
 @Module({
   imports: [
@@ -21,7 +21,8 @@ import { ImageModule } from '@/common/image/image.module';
     AuthModule,
     PostModule,
     PrismaModule,
-    ImageModule
+    ImageModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],

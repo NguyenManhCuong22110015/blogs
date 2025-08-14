@@ -26,6 +26,8 @@ export class PaginationDto {
     this.page = page;
     this.limit = limit;
     this.total = count;
+    this.totalItems = totalItems;
+    this.totalPages = Math.ceil(totalItems / limit);
     this.hasNext = page < this.totalPages;
     this.hasPrev = page > 1;
   }
