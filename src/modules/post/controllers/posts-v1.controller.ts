@@ -7,13 +7,12 @@ import {
   Param,
   Delete,
   Query,
-  DefaultValuePipe,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { PostService } from '../services/post.service';
 import { CreatePostDto } from '../dto/v1/create-post.dto';
 import { UpdatePostDto } from '../dto/v1/update-post.dto';
-import { ApiConsumes, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { FindAllPostsDto } from '../dto/v1/find-all-posts.dto';
+import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { PaginatedResponseDto } from '@/common/dtos/responses/base.response';
 import { UuidPipe } from '@/common/pipes/uuid.pipe';
 
@@ -44,15 +43,15 @@ export class PostsV1Controller {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all posts',
+    summary: 'Get all posts with filters',
   })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ) {
-    const { items, total } = await this.postService.findAll(page, limit);
+  async findAll(@Query() query: FindAllPostsDto) {
+    const { page = 1, limit = 10, ...filters } = query;
+    const { items, total } = await this.postService.findAll(
+      page,
+      limit,
+      filters,
+    );
     return new PaginatedResponseDto(items, page, limit, total);
   }
 

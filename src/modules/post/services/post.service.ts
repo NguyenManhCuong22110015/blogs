@@ -142,20 +142,81 @@ export class PostService {
   async findAll(
     page = 1,
     limit = 10,
+    filters?: {
+      status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      search?: string;
+      author?: string;
+      createdFrom?: string;
+      createdTo?: string;
+      sortBy?: 'created_at' | 'updated_at' | 'title' | 'status';
+      sortOrder?: 'asc' | 'desc';
+      tags?: string[];
+    },
   ): Promise<{ items: Omit<Post, 'content'>[]; total: number }> {
     const skip = (page - 1) * limit;
-    const cacheKey = `posts:list:${page}:${limit}`;
+
+    // Build where clause
+    const where: Record<string, any> = {};
+
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { title: { contains: filters.search, mode: 'insensitive' } },
+        { content: { contains: filters.search, mode: 'insensitive' } },
+        { summary: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (filters?.author) {
+      // Add author filter if you have author field in your schema
+      // where.author = filters.author;
+    }
+
+    if (filters?.createdFrom || filters?.createdTo) {
+      where.created_at = {};
+      if (filters.createdFrom) {
+        (where.created_at as Record<string, any>).gte = new Date(
+          filters.createdFrom,
+        );
+      }
+      if (filters.createdTo) {
+        (where.created_at as Record<string, any>).lte = new Date(
+          filters.createdTo,
+        );
+      }
+    }
+
+    if (filters?.tags && filters.tags.length > 0) {
+      // Add tags filter if you have tags field in your schema
+      // where.tags = { hasSome: filters.tags };
+    }
+
+    // Build orderBy clause
+    const orderBy: Record<string, any> = {};
+    const sortBy = filters?.sortBy || 'created_at';
+    const sortOrder = filters?.sortOrder || 'desc';
+    orderBy[sortBy] = sortOrder;
+
+    // Create cache key with filters
+    const filterKey = filters ? JSON.stringify(filters) : 'no-filters';
+    const cacheKey = `posts:list:${page}:${limit}:${filterKey}`;
+
     const cached = await this.redisService.get<{
       items: Omit<Post, 'content'>[];
       total: number;
     }>(cacheKey);
-    console.log('Cached:', cached);
+
     if (cached) return cached;
+
     const [items, total] = await this.prisma.$transaction([
       this.prisma.post.findMany({
+        where,
         skip,
         take: limit,
-        orderBy: { created_at: 'desc' },
+        orderBy,
         select: {
           id: true,
           title: true,
@@ -168,8 +229,9 @@ export class PostService {
           published_at: true,
         },
       }),
-      this.prisma.post.count(),
+      this.prisma.post.count({ where }),
     ]);
+
     const result = { items, total };
     const ttl = 60; // seconds; could move to config if needed
     await this.redisService.set(cacheKey, result, ttl);
@@ -205,6 +267,71 @@ export class PostService {
       const updated = await this.prisma.post.update({
         where: { id },
         data: updatePostDto,
+      });
+
+      // Clear cache after successful update
+      try {
+        await this.redisService.del([`posts:detail:${id}`]);
+        await this.redisService.delByPattern('posts:list:*');
+        await this.redisService.delByPattern('posts:search:*');
+      } catch (cacheError) {
+        console.error('Cache clearing error:', cacheError);
+        // Don't fail the update if cache clearing fails
+      }
+
+      return updated;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      console.error('Update post error:', error);
+      throw new Error(`Failed to update post: ${(error as Error).message}`);
+    }
+  }
+
+  async updateV2(
+    id: string,
+    updatePostDto: UpdatePostDto,
+    file?: Express.Multer.File,
+  ): Promise<Post> {
+    try {
+      // Check if post exists first
+      const existingPost = await this.prisma.post.findUnique({
+        where: { id },
+      });
+
+      if (!existingPost) {
+        throw new NotFoundException(`Post with ID ${id} not found`);
+      }
+
+      // Handle image upload if file is provided
+      let imageUrl: string | undefined;
+      if (file) {
+        if (!file.mimetype.startsWith('image/')) {
+          throw new BadRequestException('File không phải hình ảnh');
+        }
+        const upload = await this.imageService.uploadImage(file);
+        imageUrl = upload?.url;
+      }
+
+      // If slug is being updated, generate unique slug if needed
+      if (updatePostDto.slug && updatePostDto.slug !== existingPost.slug) {
+        updatePostDto.slug = await this.generateUniqueSlug(updatePostDto.slug);
+      }
+
+      // Prepare update data
+      const updateData = {
+        ...updatePostDto,
+        ...(imageUrl && { thumbnail_url: imageUrl }),
+      };
+
+      const updated = await this.prisma.post.update({
+        where: { id },
+        data: updateData,
       });
 
       // Clear cache after successful update
