@@ -8,18 +8,17 @@ import {
   Delete,
   Query,
   DefaultValuePipe,
-  ParseIntPipe, UseInterceptors,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { PostService } from '../services/post.service';
 import { CreatePostDto } from '../dto/v1/create-post.dto';
 import { UpdatePostDto } from '../dto/v1/update-post.dto';
-import { ApiConsumes, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { PaginatedResponseDto } from '@/common/dtos/responses/base.response';
-import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller({
   path: 'posts',
-  version: '1'
+  version: '1',
 })
 export class PostsV1Controller {
   constructor(private readonly postService: PostService) {}
@@ -28,12 +27,19 @@ export class PostsV1Controller {
   @ApiOperation({
     summary: 'create  post',
   })
-
   create(@Body() createPostDto: CreatePostDto) {
     return this.postService.create(createPostDto);
   }
 
-
+  @Get('/search')
+  @ApiOperation({
+    summary: 'search posts by keywords',
+  })
+  @ApiQuery({ name: 'params', required: false, type: String })
+  async search(@Query('params') params: string) {
+    const { items, total } = await this.postService.search(params);
+    return new PaginatedResponseDto(items, 1, items.length, total);
+  }
 
   @Get()
   @ApiOperation({
@@ -64,8 +70,6 @@ export class PostsV1Controller {
   update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
     return this.postService.update(id, updatePostDto);
   }
-
-
 
   @Delete(':id')
   @ApiOperation({

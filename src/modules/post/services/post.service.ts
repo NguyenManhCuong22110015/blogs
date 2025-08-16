@@ -31,6 +31,74 @@ export class PostService {
     return slug;
   }
 
+  async search(
+    params: string,
+  ): Promise<{ items: Omit<Post, 'content'>[]; total: number }> {
+    if (!params || params.trim() === '') {
+      return this.findAll();
+    }
+
+    const cacheKey = `posts:search:${params}`;
+    const cached = await this.redisService.get<{
+      items: Omit<Post, 'content'>[];
+      total: number;
+    }>(cacheKey);
+
+    if (cached) return cached;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.post.findMany({
+        where: {
+          OR: [
+            {
+              title: {
+                contains: params,
+              },
+            },
+            {
+              content: {
+                contains: params,
+              },
+            },
+          ],
+        },
+        orderBy: { created_at: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          summary: true,
+          thumbnail_url: true,
+          status: true,
+          created_at: true,
+          updated_at: true,
+          published_at: true,
+        },
+      }),
+      this.prisma.post.count({
+        where: {
+          OR: [
+            {
+              title: {
+                contains: params,
+              },
+            },
+            {
+              content: {
+                contains: params,
+              },
+            },
+          ],
+        },
+      }),
+    ]);
+
+    const result = { items, total };
+    const ttl = 60; // seconds
+    await this.redisService.set(cacheKey, result, ttl);
+    return result;
+  }
+
   async create(createPostDto: CreatePostDto) {
     const uniqueSlug = await this.generateUniqueSlug(createPostDto.slug);
     const created = await this.prisma.post.create({
@@ -38,6 +106,7 @@ export class PostService {
     });
     // Invalidate cached lists
     await this.redisService.delByPattern('posts:list:*');
+    await this.redisService.delByPattern('posts:search:*');
     return created;
   }
   async createV2(
@@ -66,6 +135,7 @@ export class PostService {
       },
     });
     await this.redisService.delByPattern('posts:list:*');
+    await this.redisService.delByPattern('posts:search:*');
     return created;
   }
 
@@ -79,7 +149,7 @@ export class PostService {
       items: Omit<Post, 'content'>[];
       total: number;
     }>(cacheKey);
-    console.log("Cached: " + cached)
+    console.log('Cached:', cached);
     if (cached) return cached;
     const [items, total] = await this.prisma.$transaction([
       this.prisma.post.findMany({
@@ -123,6 +193,7 @@ export class PostService {
     });
     await this.redisService.del([`posts:detail:${id}`]);
     await this.redisService.delByPattern('posts:list:*');
+    await this.redisService.delByPattern('posts:search:*');
     return updated;
   }
 
@@ -130,6 +201,7 @@ export class PostService {
     const deleted = await this.prisma.post.delete({ where: { id } });
     await this.redisService.del([`posts:detail:${id}`]);
     await this.redisService.delByPattern('posts:list:*');
+    await this.redisService.delByPattern('posts:search:*');
     return deleted;
   }
 }
