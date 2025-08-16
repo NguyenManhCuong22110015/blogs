@@ -13,8 +13,9 @@ import {
 import { PostService } from '../services/post.service';
 import { CreatePostDto } from '../dto/v1/create-post.dto';
 import { UpdatePostDto } from '../dto/v1/update-post.dto';
-import { ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiConsumes, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { PaginatedResponseDto } from '@/common/dtos/responses/base.response';
+import { UuidPipe } from '@/common/pipes/uuid.pipe';
 
 @Controller({
   path: 'posts',
@@ -59,7 +60,7 @@ export class PostsV1Controller {
   @ApiOperation({
     summary: 'Get  post by id',
   })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', UuidPipe) id: string) {
     return this.postService.findOne(id);
   }
 
@@ -67,7 +68,10 @@ export class PostsV1Controller {
   @ApiOperation({
     summary: 'update  post',
   })
-  update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
+  update(
+    @Param('id', UuidPipe) id: string,
+    @Body() updatePostDto: UpdatePostDto,
+  ) {
     return this.postService.update(id, updatePostDto);
   }
 
@@ -75,7 +79,7 @@ export class PostsV1Controller {
   @ApiOperation({
     summary: 'delete  post',
   })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', UuidPipe) id: string) {
     return this.postService.remove(id);
   }
 }

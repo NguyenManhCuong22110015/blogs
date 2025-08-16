@@ -187,21 +187,81 @@ export class PostService {
   }
 
   async update(id: string, updatePostDto: UpdatePostDto) {
-    const updated = await this.prisma.post.update({
-      where: { id },
-      data: updatePostDto,
-    });
-    await this.redisService.del([`posts:detail:${id}`]);
-    await this.redisService.delByPattern('posts:list:*');
-    await this.redisService.delByPattern('posts:search:*');
-    return updated;
+    try {
+      // Check if post exists first
+      const existingPost = await this.prisma.post.findUnique({
+        where: { id },
+      });
+
+      if (!existingPost) {
+        throw new NotFoundException(`Post with ID ${id} not found`);
+      }
+
+      // If slug is being updated, generate unique slug if needed
+      if (updatePostDto.slug && updatePostDto.slug !== existingPost.slug) {
+        updatePostDto.slug = await this.generateUniqueSlug(updatePostDto.slug);
+      }
+
+      const updated = await this.prisma.post.update({
+        where: { id },
+        data: updatePostDto,
+      });
+
+      // Clear cache after successful update
+      try {
+        await this.redisService.del([`posts:detail:${id}`]);
+        await this.redisService.delByPattern('posts:list:*');
+        await this.redisService.delByPattern('posts:search:*');
+      } catch (cacheError) {
+        console.error('Cache clearing error:', cacheError);
+        // Don't fail the update if cache clearing fails
+      }
+
+      return updated;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      console.error('Update post error:', error);
+      throw new Error(`Failed to update post: ${(error as Error).message}`);
+    }
   }
 
   async remove(id: string) {
-    const deleted = await this.prisma.post.delete({ where: { id } });
-    await this.redisService.del([`posts:detail:${id}`]);
-    await this.redisService.delByPattern('posts:list:*');
-    await this.redisService.delByPattern('posts:search:*');
-    return deleted;
+    try {
+      // Check if post exists first
+      const existingPost = await this.prisma.post.findUnique({
+        where: { id },
+      });
+
+      if (!existingPost) {
+        throw new NotFoundException(`Post with ID ${id} not found`);
+      }
+
+      const deleted = await this.prisma.post.delete({ where: { id } });
+
+      // Clear cache after successful deletion
+      try {
+        await this.redisService.del([`posts:detail:${id}`]);
+        await this.redisService.delByPattern('posts:list:*');
+        await this.redisService.delByPattern('posts:search:*');
+      } catch (cacheError) {
+        console.error('Cache clearing error:', cacheError);
+        // Don't fail the deletion if cache clearing fails
+      }
+
+      return deleted;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      console.error('Remove post error:', error);
+      throw new Error(`Failed to remove post: ${(error as Error).message}`);
+    }
   }
 }

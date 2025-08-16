@@ -1,14 +1,7 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-  DefaultValuePipe,
-  ParseIntPipe,
   UploadedFile,
   ParseFilePipe,
   MaxFileSizeValidator,
@@ -16,9 +9,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { PostService } from '../services/post.service';
-import { UpdatePostDto } from '../dto/v2/update-post.dto';
-import { ApiBody, ApiConsumes, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { PaginatedResponseDto } from '@/common/dtos/responses/base.response';
+import { ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreatePostWithFileDto } from '@/modules/post/dto/v2/create-post-with-file.dto';
 import { CreatePostDto } from '@/modules/post/dto/v2/create-post.dto';
@@ -56,31 +47,5 @@ export class PostsV2Controller {
     file?: Express.Multer.File,
   ) {
     return this.postService.createV2(createPostDto, file);
-  }
-
-  @Get()
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ) {
-    const { items, total } = await this.postService.findAll(page, limit);
-    return new PaginatedResponseDto(items, page, limit, total);
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.postService.findOne(id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
-    return this.postService.update(id, updatePostDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.postService.remove(id);
   }
 }
