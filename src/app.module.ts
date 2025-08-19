@@ -9,6 +9,7 @@ import { PostModule } from '@/modules/post/post.module';
 import { PrismaModule } from '@/infrastructure/database/prisma.module';
 import { ImageModule } from '@/common/image/image.module';
 import { RedisModule } from '@/infrastructure/cache/redis/redis.module';
+import { MetaModule } from '@/infrastructure/meta';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { RedisModule } from '@/infrastructure/cache/redis/redis.module';
     PrismaModule,
     ImageModule,
     RedisModule,
+    MetaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

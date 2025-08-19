@@ -9,15 +9,74 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  username   String?  @unique
+  id         String    @id @default(cuid())
+  email      String    @unique
+  username   String?   @unique
   full_name  String?
   avatar     String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deletedAt  DateTime?
+  isAdmin    Boolean   @default(false)
+  name       String?
+
+  // Relations
+  apiKeys     ApiKey[]
+  sessions    Session[]
+  sharedLinks SharedLink[]
+  albumUsers  AlbumUser[]
 
   @@map("users")
+}
+
+model ApiKey {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  name        String?
+  permissions Json     @default("[]")
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model Session {
+  id                 String    @id @default(uuid()) @db.Uuid
+  token              String    @unique
+  userId             String
+  deviceOS           String?
+  deviceType         String?
+  expiresAt          DateTime?
+  pinExpiresAt       DateTime?
+  isPendingSyncReset Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model SharedLink {
+  id        String    @id @default(uuid()) @db.Uuid
+  key       String    @unique
+  slug      String?   @unique
+  userId    String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  albumId   String?
+
+  // Relations
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sharedLinkAssets SharedLinkAsset[]
+
+  @@map("shared_links")
 }
 
 model Post {
@@ -45,8 +104,153 @@ model Image {
   createdAt DateTime @default(now())
 }
 
+model SystemMetadata {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_metadata")
+}
+
 enum PostStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
 }
+
+// Additional models to support AccessRepository with Prisma Client
+
+model Album {
+  id                String    @id @default(uuid()) @db.Uuid
+  ownerId           String
+  isActivityEnabled Boolean   @default(false)
+  deletedAt         DateTime?
+
+  // Relations
+  albumUsers  AlbumUser[]
+  albumAssets AlbumAsset[]
+  activities  Activity[]
+
+  @@map("album")
+}
+
+model Activity {
+  id      String  @id @default(uuid()) @db.Uuid
+  userId  String
+  albumId String?
+
+  // Relations
+  album Album? @relation(fields: [albumId], references: [id])
+
+  @@map("activity")
+}
+
+model AlbumUser {
+  albumsId String  @db.Uuid
+  usersId  String  @db.Uuid
+  role     String?
+
+  // Relations
+  album Album @relation(fields: [albumsId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [usersId], references: [id], onDelete: Cascade)
+
+  @@id([albumsId, usersId])
+  @@map("album_user")
+}
+
+model Asset {
+  id               String    @id @default(uuid()) @db.Uuid
+  ownerId          String
+  livePhotoVideoId String?
+  visibility       String?
+  deletedAt        DateTime?
+
+  // Relations
+  albumAssets      AlbumAsset[]
+  assetFaces       AssetFace[]
+  sharedLinkAssets SharedLinkAsset[]
+
+  @@map("asset")
+}
+
+model AlbumAsset {
+  albumsId String @db.Uuid
+  assetsId String @db.Uuid
+
+  // Relations
+  album Album @relation(fields: [albumsId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetsId], references: [id], onDelete: Cascade)
+
+  @@id([albumsId, assetsId])
+  @@map("album_asset")
+}
+
+model Notification {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String
+
+  @@map("notification")
+}
+
+model Stack {
+  id      String @id @default(uuid()) @db.Uuid
+  ownerId String
+
+  @@map("stack")
+}
+
+model Partner {
+  sharedById   String
+  sharedWithId String
+
+  @@id([sharedById, sharedWithId])
+  @@map("partner")
+}
+
+model Memory {
+  id        String    @id @default(uuid()) @db.Uuid
+  ownerId   String
+  deletedAt DateTime?
+
+  @@map("memory")
+}
+
+model Person {
+  id      String @id @default(uuid()) @db.Uuid
+  ownerId String
+
+  @@map("person")
+}
+
+model AssetFace {
+  id      String @id @default(uuid()) @db.Uuid
+  assetId String
+
+  // Relations
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@map("asset_face")
+}
+
+model SharedLinkAsset {
+  sharedLinksId String @db.Uuid
+  assetsId      String @db.Uuid
+
+  // Relations
+  sharedLink SharedLink @relation(fields: [sharedLinksId], references: [id], onDelete: Cascade)
+  asset      Asset      @relation(fields: [assetsId], references: [id], onDelete: Cascade)
+
+  @@id([sharedLinksId, assetsId])
+  @@map("shared_link_asset")
+}
+
+model Tag {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String
+
+  @@map("tag")
+}
+
+// Extend existing models with relations: merged into originals above
